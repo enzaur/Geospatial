@@ -1,10 +1,10 @@
 const mysql = require('mysql2');
 
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'geospatial' //'isfe2' 
+    host: 'sql6.freemysqlhosting.net',
+    user: 'sql6682347',
+    password: 'Lh3HpnTJUN',
+    database: 'sql6682347' //'isfe2' 
 });
 
 db.connect((err) => {
