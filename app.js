@@ -11,7 +11,7 @@ const UserRouter = require('./routes/user');
 const VehicleRouter = require('./routes/vehicle');
 const VehicleStatusRouter = require('./routes/vehiclestatus');
 const UserLocationRouter = require('./routes/user_location');
-const LocationHistoryRouter = require('./routes/Location_history');
+const LocationHistoryRouter = require('./routes/location_history');
 const TripsRouter = require('./routes/trips');
 
 app.use(cors());
