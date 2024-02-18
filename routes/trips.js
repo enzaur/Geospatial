@@ -8,7 +8,7 @@ const secretKey = 'lorenzo-secret-key';
 const TripsRouter = express.Router(); //modular route handler
 
 // display vehicles start //
-TripsRouter.get('/vehiclestatuses', authenticateToken, (req, res) => {
+TripsRouter.get('/trips', authenticateToken, (req, res) => {
     try {
         db.query('select trip_id, start_time, end_time, distance_travelled, user_id, vehicles_id from trips;', (err, result) => {
             if (err) {
@@ -28,7 +28,7 @@ TripsRouter.get('/vehiclestatuses', authenticateToken, (req, res) => {
 // display vehicles end //
 
 // display specific vehicle status start //
-TripsRouter.get('/displayvehiclestatus/:id', authenticateToken, (req, res) => {
+TripsRouter.get('/trip/:id', authenticateToken, (req, res) => {
     let trip_id = req.params.id;
 
     if (!trip_id) {
