@@ -1,19 +1,19 @@
-const mysql = require('mysql2');
+const { Client } = require('pg');
 
-const db = mysql.createConnection({
-    host: 'sql6.freemysqlhosting.net',
-    user: 'sql6690273',
-    password: 'kj3dqHGH8c',
-    database: 'sql6690273' //'isfe2' 
+// Connection details
+const connectionString = "postgresql://neondb_owner:RbX4zPUZjSJ8@ep-damp-base-a1xszt2m-pooler.ap-southeast-1.aws.neon.tech/geo-spatial-mobile-web?sslmode=require";
+
+// Create a new PostgreSQL client
+const client = new Client({
+    connectionString: connectionString,
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err);
-    }
-    else{
-        console.log('Connected to MySQL');
-    }
-})
+// Connect to the database
+client.connect()
+    .then(() => {
+        console.log('Connected to the database');
+        // You can start executing queries here
+    })
+    .catch(err => console.error('Error connecting to database', err));
 
-module.exports = db;
+module.exports = client;
