@@ -1,163 +1,97 @@
 const express = require('express');
-const bcrypt = require('bcrypt'); //hashing password
-const jwt = require('jsonwebtoken'); //authetication and authorization
-const db = require('../database/database');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const client = require('../database/database');
 const authenticateToken = require('../middleware/authenticateToken');
-const secretKey = 'lorenzo-secret-key';
 
-const UserRouter = express.Router(); //modular route handler
+const UserRouter = express.Router();
+// CREATE a user
+UserRouter.post('/register/user', async (req, res) => {
+    try {
+        const { first_name, last_name, username, password, email } = req.body;
 
-// login start //
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
+
+        const query = 'INSERT INTO users (first_name, last_name, username, password, email) VALUES ($1, $2, $3, $4, #5) RETURNING *';
+        const { rows } = await client.query(query, [first_name, last_name, username, hashedPassword, email]);
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Login
 UserRouter.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
 
-        const getUserQuery = 'SELECT * FROM users WHERE email = ?';
-        const [rows] = await db.promise().execute(getUserQuery, [email]);
+        const query = 'SELECT * FROM users WHERE username = $1';
+        const { rows } = await client.query(query, [username]);
 
         if (rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
         const user = rows[0];
-        const passwordMatch = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
-        if (!passwordMatch) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Invalid password' });
         }
 
-        const token = jwt.sign({ userId: user.id, email: user.email }, secretKey, { expiresIn: '1h' });
+        // Password is correct, you can now proceed with authentication
 
-        res.status(200).json({ token });
-    }
-    catch (error) {
-        console.error('Error lodging in user:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.json({ message: 'Login successful', user });
+    } catch (error) {
+        console.error('Error logging in:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
-// login ends //
 
-// registering user start //
-UserRouter.post('/register', async (req, res) => {
 
+// READ all users
+UserRouter.get('/view_users', authenticateToken, async (req, res) => {
     try {
-        const { name, username, email, password, role_id } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const insertUserQuery = 'INSERT INTO users (name, username, email, password, role_id) VALUES (?,?,?,?,?)';
-        await db.promise().execute(insertUserQuery, [name, username, email, hashedPassword, role_id]);
-
-        res.status(201).json({ message: 'User registered successfully' });
-    }
-    catch (error) {
-        console.error('Error registering user:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        const query = 'SELECT * FROM users';
+        const { rows } = await client.query(query);
+        res.json(rows);
+    } catch (error) {
+        console.error('Error getting users:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
-// registering user end //
 
-// display users start //
-UserRouter.get('/users',authenticateToken, (req, res) => {
+// UPDATE a user
+UserRouter.put('users/:id', async (req, res) => {
     try {
-        db.query('select user_id, name, username, email, role_id from users;', (err, result) => {
-            if (err) {
-                console.error('Error fetching items:', err);
-                res.status(500).json({ message: 'Internal Server Error' });
-            }
-            else {
-                res.status(200).json(result);
-            }
-        });
-    }
-    catch (error) {
-        console.error('Error loading users:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        const { user_id } = req.params;
+        const { username, email, first_name, last_name, role_id, password } = req.body;
+
+        const query = 'UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, role_id = $5, password = $6 WHERE user_id = $7 RETURNING *';
+
+        const parameters = [username, email, first_name, last_name, role_id, password, user_id];
+
+        const { rows } = await client.query(query, parameters);
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
-// display users end //
 
-// display specific user start //
-UserRouter.get('/displayuser/:id',authenticateToken, (req, res) => {
-    let user_id = req.params.id;
-
-    if (!user_id) {
-        return res.status(400).send({ error: true, message: 'Please provide user_id' });
-    }
-
+// DELETE a user
+UserRouter.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        db.query('select user_id, name, username, email, role_id from users where user_id= ?;', user_id, (err, result) => {
-            if (err) {
-                console.error('Error fetching items:', err);
-                res.status(500).json({ message: 'Internal Server Error' });
-            }
-            else {
-                res.status(200).json(result);
-            }
-        });
-    }
-
-    catch (error) {
-        console.error('Error loading user:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        const { id } = req.params;
+        const query = 'DELETE FROM users WHERE user_id = $1';
+        await client.query(query, [id]);
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
-// display specific user end //
-
-// update info from user start //
-UserRouter.put('/updateuser/:id',authenticateToken, async (req, res) => {
-    let user_id = req.params.id;
-
-    const { name, username, email, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    if (!user_id || !name || !username || !email ||!password) {
-        return res.status(400).send({ error: user, message: 'Please provide name, username, and password' });
-    }
-
-    try {
-        db.query('UPDATE users SET name = ?, username = ?, email = ?, password = ? WHERE user_id = ?', [name, username, email, hashedPassword, user_id], (err, result, fields) => {
-
-            if (err) {
-                console.error('Error updating item:', err);
-                res.status(500).json({ message: 'Internal Server Error' });
-            } else {
-                res.status(200).json(result);
-            }
-        });
-    }
-
-    catch (error) {
-        console.error('Error loading user:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-// update info from user end //
-
-// delete info from user start //
-UserRouter.delete('/delete/:id', authenticateToken, (req, res) => {
-    let user_id = req.params.id;
-
-    if (!user_id) {
-        return res.status(400).send({ error: true, message: 'Please provide user_id' });
-    }
-
-    try {
-        db.query('DELETE FROM users WHERE user_id = ?', user_id, (err, result, fields) => {
-            if (err) {
-                console.error('Error deleting item:', err);
-                res.status(500).json({ message: 'Internal Server Error' });
-            } else {
-                res.status(200).json(result);
-            }
-        });
-    }
-
-    catch (error) {
-        console.error('Error loading user:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-// delete info from user end //
-
 
 module.exports = UserRouter;
