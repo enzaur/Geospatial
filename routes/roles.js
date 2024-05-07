@@ -1,9 +1,9 @@
+
 const express = require('express');
-const bcrypt = require('bcrypt'); //hashing password
-const jwt = require('jsonwebtoken'); //authetication and authorization
-const db = require('../database/database');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const client = require('../database/database');
 const authenticateToken = require('../middleware/authenticateToken');
-const secretKey = 'lorenzo-secret-key';
 
 const RoleRouter = express.Router(); //modular route handler
 
@@ -13,7 +13,7 @@ RoleRouter.post('/registerrole',  async (req, res) => {
     try {
         const { role_code, role_name } = req.body;
 
-        const insertUserQuery = 'INSERT INTO role (role_code, role_name) VALUES (?,?)';
+        const insertUserQuery = 'INSERT INTO roles (role_code, role_name) VALUES (?,?)';
         await db.promise().execute(insertUserQuery, [role_code, role_name]);
 
         res.status(201).json({ message: 'Role registered successfully' });
@@ -25,40 +25,11 @@ RoleRouter.post('/registerrole',  async (req, res) => {
 });
 // registering role end //
 
-// login start //
-RoleRouter.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        const getUserQuery = 'SELECT * FROM users WHERE email = ?';
-        const [rows] = await db.promise().execute(getUserQuery, [email]);
-
-        if (rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid username or password' });
-        }
-
-        const user = rows[0];
-        const passwordMatch = await bcrypt.compare(password, user.password);
-
-        if (!passwordMatch) {
-            return res.status(401).json({ error: 'Invalid username or password' });
-        }
-
-        const token = jwt.sign({ userId: user.id, email: user.email }, secretKey, { expiresIn: '1h' });
-
-        res.status(200).json({ token });
-    }
-    catch (error) {
-        console.error('Error lodging in user:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-// login ends //
 
 // display roles start //
-RoleRouter.get('/roles', (req, res) => {
+RoleRouter.get('/roles', authenticateToken ,(req, res) => {
     try {
-        db.query('select role_id, role_code, role_name from role;', (err, result) => {
+        db.query('select role_id, role_code, role_name from roles;', (err, result) => {
             if (err) {
                 console.error('Error fetching items:', err);
                 res.status(500).json({ message: 'Internal Server Error' });
@@ -69,12 +40,11 @@ RoleRouter.get('/roles', (req, res) => {
         });
     }
     catch (error) {
-        console.error('Error loading users:', error);
+        console.error('Error loading roles:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 // display roles end //
-
 // display specific role start //
 RoleRouter.get('/displayrole/:id', (req, res) => {
     let role_id = req.params.id;
@@ -84,19 +54,16 @@ RoleRouter.get('/displayrole/:id', (req, res) => {
     }
 
     try {
-        db.query('select role_id, role_code, role_name from role where role_id= ?;', role_id, (err, result) => {
+        db.query('SELECT role_id, role_code, role_name FROM roles WHERE role_id = ?;', [role_id], (err, result) => {
             if (err) {
-                console.error('Error fetching items:', err);
+                console.error('Error fetching role:', err);
                 res.status(500).json({ message: 'Internal Server Error' });
-            }
-            else {
+            } else {
                 res.status(200).json(result);
             }
         });
-    }
-
-    catch (error) {
-        console.error('Error loading user:', error);
+    } catch (error) {
+        console.error('Error loading role:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -126,7 +93,7 @@ RoleRouter.put('/updaterole/:id', async (req, res) => {
     }
 
     catch (error) {
-        console.error('Error loading user:', error);
+        console.error('Error loading roles:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
