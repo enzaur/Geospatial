@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -5,25 +6,24 @@ const e = require('cors');
 const db = require('./database/database');
 const app = express();
 const PORT = process.env.PORT || 3306;
+require('dotenv').config();
 
 const RoleRouter = require('./routes/roles');
-const UserRouter = require('./routes/user');
-const VehicleRouter = require('./routes/vehicle');
-const VehicleStatusRouter = require('./routes/vehiclestatus');
-const UserLocationRouter = require('./routes/user_location');
-const LocationHistoryRouter = require('./routes/location_history');
+const UserRouter = require('./routes/users');
+const DriverRouter = require('./routes/driver');
+const JeepRouter = require('./routes/jeep');
+const LocationRouter = require('./routes/location');
 const TripsRouter = require('./routes/trips');
 
 app.use(cors());
 app.use(bodyParser.json());
 
-//routes
+//routes    
 app.use('/', RoleRouter);
 app.use('/', UserRouter);
-app.use('/', VehicleRouter);
-app.use('/', VehicleStatusRouter);
-app.use('/', UserLocationRouter);
-app.use('/', LocationHistoryRouter);
+app.use('/', DriverRouter);
+app.use('/', JeepRouter);
+app.use('/', LocationRouter);
 app.use('/', TripsRouter);
 
 app.get('/', (req, res) => {
